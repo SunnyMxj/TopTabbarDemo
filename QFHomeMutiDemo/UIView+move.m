@@ -11,13 +11,13 @@
 
 @interface UIView()
 
-@property (nonatomic, strong)UIPanGestureRecognizer *panGesture;
+@property (nonatomic, strong, readwrite)UILongPressGestureRecognizer *longPressGesture;
 
 @end
 
 @implementation UIView (move)
 
-- (void)panGestureAction:(UIPanGestureRecognizer *)gesture{
+- (void)longPressGestureAction:(UILongPressGestureRecognizer *)gesture{
     switch (gesture.state) {
         case UIGestureRecognizerStateBegan:
             if ([self.moveDelegate respondsToSelector:@selector(view:beginToMove:)]) {
@@ -46,20 +46,20 @@
 }
 
 - (void)setMoveDelegate:(id<UIViewMoveDelegate>)moveDelegate{
-    if (!self.panGesture) {
-        UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(panGestureAction:)];
-        [self addGestureRecognizer:panGesture];
-        self.panGesture = panGesture;
+    if (!self.longPressGesture) {
+        UILongPressGestureRecognizer *longPressGesture = [[UILongPressGestureRecognizer alloc]initWithTarget:self action:@selector(longPressGestureAction:)];
+        [self addGestureRecognizer:longPressGesture];
+        self.longPressGesture = longPressGesture;
     }
     objc_setAssociatedObject(self, @selector(moveDelegate), moveDelegate, OBJC_ASSOCIATION_ASSIGN);
 }
 
-- (UIPanGestureRecognizer *)panGesture{
+- (UILongPressGestureRecognizer *)longPressGesture{
     return objc_getAssociatedObject(self, _cmd);
 }
 
-- (void)setPanGesture:(UIPanGestureRecognizer *)panGesture{
-    objc_setAssociatedObject(self, @selector(panGesture), panGesture, OBJC_ASSOCIATION_ASSIGN);
+- (void)setLongPressGesture:(UILongPressGestureRecognizer *)longPressGesture{
+    objc_setAssociatedObject(self, @selector(longPressGesture), longPressGesture, OBJC_ASSOCIATION_ASSIGN);
 }
 
 - (NSInteger)tagId{

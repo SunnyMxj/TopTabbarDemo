@@ -10,9 +10,9 @@
 
 @protocol UIViewMoveDelegate <NSObject>
 
-- (void)view:(UIView *)view beginToMove:(UIPanGestureRecognizer *)gesture;
-- (void)view:(UIView *)view isMoving:(UIPanGestureRecognizer *)gesture;
-- (void)view:(UIView *)view endMove:(UIPanGestureRecognizer *)gesture;
+- (void)view:(UIView *)view beginToMove:(UILongPressGestureRecognizer *)gesture;
+- (void)view:(UIView *)view isMoving:(UILongPressGestureRecognizer *)gesture;
+- (void)view:(UIView *)view endMove:(UILongPressGestureRecognizer *)gesture;
 
 @end
 
@@ -20,6 +20,7 @@
 
 @property (nonatomic, assign) NSInteger tagId;
 @property (nonatomic, assign) CGPoint originCenter;
+@property (nonatomic, strong, readonly) UILongPressGestureRecognizer *longPressGesture;
 @property (nonatomic, weak) id <UIViewMoveDelegate> moveDelegate;
 
 @end

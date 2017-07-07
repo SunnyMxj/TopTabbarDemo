@@ -54,6 +54,7 @@
         self.label.textAlignment = NSTextAlignmentCenter;
         self.label.text = entity.name;
         self.label.textColor = [UIColor darkGrayColor];
+        self.label.userInteractionEnabled = YES;
         if (entity.name.length > 4) {
             self.label.font = [UIFont systemFontOfSize:11];
         } else if (entity.name.length == 4) {
@@ -201,12 +202,10 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     [_topEntities enumerateObjectsUsingBlock:^(QFHomeEntityModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:idx inSection:0];
         QFHomeEntityView *view = [[QFHomeEntityView alloc] initWithEntity:obj atIndex:indexPath firstSectionCount:_topEntities.count];
+        view.label.moveDelegate = self;
         [view.deleteButton addTarget:self action:@selector(itemDeleteButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapAction:)];
         [view addGestureRecognizer:tap];
-//        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressAction:)];
-//        [longPress requireGestureRecognizerToFail:tap];
-//        [view addGestureRecognizer:longPress];
         if (!view.entity.binding) {
             [self.sortedSubViews addObject:view];
             view.tagId = [self.sortedSubViews indexOfObject:view];
@@ -228,9 +227,6 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
         [view.deleteButton addTarget:self action:@selector(itemDeleteButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapAction:)];
         [view addGestureRecognizer:tap];
-//        UILongPressGestureRecognizer *longPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPressAction:)];
-//        [longPress requireGestureRecognizerToFail:tap];
-//        [view addGestureRecognizer:longPress];
         [self.contentView addSubview:view];
         if (idx == (_downEntities.count - 1)) {
             totalHeight = view.tail + QFEntityViewBottomHeight;
@@ -245,7 +241,8 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     
     NSInteger oldIndex = [self.sortedSubViews indexOfObject:view];
     [self.sortedSubViews removeObject:view];
-    view.moveDelegate = nil;
+    view.label.longPressGesture.minimumPressDuration = 0.5;
+    view.label.moveDelegate = nil;
     NSMutableArray *tempTop = [NSMutableArray arrayWithArray:_topEntities];
     [tempTop removeObject:view.entity];
     _topEntities = tempTop;
@@ -296,9 +293,12 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     [tempDown removeObject:view.entity];
     _downEntities = tempDown;
     
+    view.label.moveDelegate = self;
     if (_editButton.isSelected) {
-        view.moveDelegate = self;
+        view.label.longPressGesture.minimumPressDuration = 0.05;
         view.deleteButton.hidden = NO;
+    } else {
+        view.label.longPressGesture.minimumPressDuration = 0.5;
     }
     
     [UIView animateWithDuration:0.35 animations:^{
@@ -324,16 +324,6 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     self.hasChanged = YES;
 }
 
-//- (void)longPressAction:(UILongPressGestureRecognizer *)longPress {
-//    if (self.editButton.isSelected) {
-//        return;
-//    }
-//    QFHomeEntityView *view = (QFHomeEntityView *)longPress.view;
-//    if (view.index.section == 0) {
-//        [self editAction:self.editButton];
-//    }
-//}
-
 - (void)editAction:(UIButton *)sender {
     sender.selected = !sender.isSelected;
     if (sender.isSelected) {//编辑状态
@@ -342,8 +332,8 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
                 continue;
             }
             if (view.index.section == 0 && !view.entity.binding) {
-                view.moveDelegate = self;
                 view.deleteButton.hidden = NO;
+                view.label.longPressGesture.minimumPressDuration = 0.05;
             }
         }
     } else {//完成编辑
@@ -352,8 +342,8 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
                 continue;
             }
             if (view.index.section == 0 && !view.entity.binding) {
-                view.moveDelegate = nil;
                 view.deleteButton.hidden = YES;
+                view.label.longPressGesture.minimumPressDuration = 0.5;
             }
         }
     }
@@ -409,58 +399,73 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
 
 #pragma mark -- UIViewMoveDelegate
 - (void)view:(UIView *)view beginToMove:(UIPanGestureRecognizer *)gesture {
-    _originCenter = view.center;
+    QFHomeEntityView *entityView = (QFHomeEntityView *)view.superview;
+    if (!self.editButton.isSelected) {
+        [self editAction:self.editButton];
+    }
+    if (entityView.entity.binding) {
+        return;
+    }
+    _originCenter = entityView.center;
     [self recoverWithView:nil];
     _gestureLocationInView = [gesture locationInView:self];
-    [self bringSubviewToFront:view];
-    view.transform = CGAffineTransformMakeScale(1.1, 1.1);
+    [self bringSubviewToFront:entityView];
+    entityView.transform = CGAffineTransformMakeScale(1.1, 1.1);
 }
 
 - (void)view:(UIView *)view isMoving:(UIPanGestureRecognizer *)gesture {
+    QFHomeEntityView *entityView = (QFHomeEntityView *)view.superview;
+    if (entityView.entity.binding) {
+        return;
+    }
     CGPoint newPoint = [gesture locationInView:self];
     CGFloat deltaX = newPoint.x - _gestureLocationInView.x;
     CGFloat deltaY = newPoint.y - _gestureLocationInView.y;
     _gestureLocationInView = newPoint;
-    view.center = CGPointMake(view.center.x + deltaX, view.center.y + deltaY);
-    NSInteger newIndex = [self newIndexOfView:view];
+    entityView.center = CGPointMake(entityView.center.x + deltaX, entityView.center.y + deltaY);
+    NSInteger newIndex = [self newIndexOfView:entityView];
 
     if (newIndex < 0 || newIndex >= self.sortedSubViews.count) {
         return;
     }
     UIView *targetView = [self.sortedSubViews objectAtIndex:newIndex];
     _originCenter = targetView.originCenter;
-    if (newIndex < view.tagId) {
-        for (NSUInteger i = view.tagId; i > newIndex; i--) {
+    if (newIndex < entityView.tagId) {
+        for (NSUInteger i = entityView.tagId; i > newIndex; i--) {
             UIView *firstView = [self.sortedSubViews objectAtIndex:(i - 1)];
             UIView *lastView = [self.sortedSubViews objectAtIndex:i];
             [UIView animateWithDuration:0.35 animations:^{
                 firstView.center = lastView.originCenter;
             }];
         }
-        [self.sortedSubViews removeObject:view];
-        [self.sortedSubViews insertObject:view atIndex:newIndex];
-        [self recoverWithView:view];
+        [self.sortedSubViews removeObject:entityView];
+        [self.sortedSubViews insertObject:entityView atIndex:newIndex];
+        [self recoverWithView:entityView];
         self.hasChanged = YES;
-    } else if (newIndex > view.tagId) {
-        for (NSUInteger i = view.tagId; i < newIndex; i++) {
+    } else if (newIndex > entityView.tagId) {
+        for (NSUInteger i = entityView.tagId; i < newIndex; i++) {
             UIView *firstView = [self.sortedSubViews objectAtIndex:i];
             UIView *lastView = [self.sortedSubViews objectAtIndex:(i + 1)];
             [UIView animateWithDuration:0.35 animations:^{
                 lastView.center = firstView.originCenter;
             }];
         }
-        [self.sortedSubViews removeObject:view];
-        [self.sortedSubViews insertObject:view atIndex:newIndex];
-        [self recoverWithView:view];
+        [self.sortedSubViews removeObject:entityView];
+        [self.sortedSubViews insertObject:entityView atIndex:newIndex];
+        [self recoverWithView:entityView];
         self.hasChanged = YES;
     }
 }
 
 - (void)view:(UIView *)view endMove:(UIPanGestureRecognizer *)gesture {
+    QFHomeEntityView *entityView = (QFHomeEntityView *)view.superview;
+    if (entityView.entity.binding) {
+        return;
+    }
     [UIView animateWithDuration:0.35 animations:^{
-        view.center = _originCenter;
+        entityView.center = _originCenter;
     }];
-    view.transform = CGAffineTransformIdentity;
+    entityView.transform = CGAffineTransformIdentity;
 }
 
 #pragma mark -- help
