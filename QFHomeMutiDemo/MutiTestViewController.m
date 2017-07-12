@@ -7,6 +7,8 @@
 //
 
 #import "MutiTestViewController.h"
+#import "ViewController.h"
+#import "UIView+frameAdjust.h"
 
 @interface MutiTestViewController ()
 
@@ -29,6 +31,11 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    ViewController *parentVC = (ViewController *)self.parentViewController;
+    if (parentVC) {
+        self.view.height = parentVC.contentHeight;
+    }
     
     CGFloat random = arc4random_uniform(100)/100.f;
     CGFloat random1 = arc4random_uniform(100)/100.f;

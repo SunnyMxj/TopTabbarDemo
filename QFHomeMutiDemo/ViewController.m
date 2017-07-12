@@ -128,11 +128,10 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
 
 @property (nonatomic, assign) NSInteger selectID;
 @property (nonatomic, assign) BOOL animating;
+@property (nonatomic, assign) BOOL showing;
 @property (nonatomic, strong) UIButton *topButton;
-@property (nonatomic, strong) UIButton *editButton;
-@property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, weak  ) UIButton *editButton;
 @property (nonatomic, strong) UIScrollView *contentView;
-@property (nonatomic, strong) UIView *firstSectionBackView;
 
 @property (nonatomic, strong) NSArray <QFHomeEntityModel *>*topEntities;
 @property (nonatomic, assign) NSInteger bindingCount;
@@ -150,29 +149,24 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.backgroundColor = [UIColor whiteColor];
-        
         self.topButton = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 64)];
         [self addSubview:self.topButton];
         
         self.contentView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 64, SCREEN_WIDTH, SCREEN_HEIGHT - 64)];
         self.contentView.showsVerticalScrollIndicator = NO;
         self.contentView.showsHorizontalScrollIndicator = NO;
+        self.contentView.backgroundColor = [UIColor colorWithWhite:1 alpha:0.95];
         [self addSubview:self.contentView];
         
-        self.firstSectionBackView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 100)];
-        self.firstSectionBackView.backgroundColor = [UIColor cyanColor];
-        [self.contentView addSubview:self.firstSectionBackView];
-        
-        self.editButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 100, (QFEntityViewHeaderHeight - 20)/2, 45, 20)];
-        [self.editButton addTarget:self action:@selector(editAction:) forControlEvents:UIControlEventTouchUpInside];
-        [self.editButton setTitle:@"编辑" forState:UIControlStateNormal];
-        [self.editButton setTitle:@"完成" forState:UIControlStateSelected];
-        [self.contentView addSubview:self.editButton];
-        
-        self.closeButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 50, (QFEntityViewHeaderHeight - 20)/2, 30, 20)];
-        [self.closeButton setTitle:@"-X-" forState:UIControlStateNormal];
-        [self.contentView addSubview:self.closeButton];
+//        self.editButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 100, (QFEntityViewHeaderHeight - 20)/2, 45, 20)];
+//        [self.editButton addTarget:self action:@selector(editAction:) forControlEvents:UIControlEventTouchUpInside];
+//        [self.editButton setTitle:@"编辑" forState:UIControlStateNormal];
+//        [self.editButton setTitle:@"完成" forState:UIControlStateSelected];
+//        [self.contentView addSubview:self.editButton];
+//        
+//        self.closeButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 50, (QFEntityViewHeaderHeight - 20)/2, 30, 20)];
+//        [self.closeButton setTitle:@"-X-" forState:UIControlStateNormal];
+//        [self.contentView addSubview:self.closeButton];
         
         self.sortedSubViews = [NSMutableArray array];
     }
@@ -218,7 +212,7 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
         }
     }];
     self.bindingCount = bindingCount;
-    self.firstSectionBackView.height = firstSectionHeight;
+
     _downEntities = downEntities;
     __block CGFloat totalHeight = 0 ;
     [_downEntities enumerateObjectsUsingBlock:^(QFHomeEntityModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -265,7 +259,6 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
             }
         }
         [view setIndex:[NSIndexPath indexPathForRow:0 inSection:1] firstSectionCount:_topEntities.count];
-        self.firstSectionBackView.height = view.y - QFEntityViewHeaderHeight;
     }];
     self.hasChanged = YES;
 }
@@ -319,7 +312,6 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
         if (view.entity.ID == self.selectID) {
             view.currentSelected = YES;
         }
-        self.firstSectionBackView.height = view.tail + QFEntityViewBottomHeight;
     }];
     self.hasChanged = YES;
 }
@@ -370,6 +362,7 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     self.topEntities = sortedTop;
 
     [UIView animateWithDuration:.5f animations:^{
+        self.editButton.superview.alpha = 0;
         self.y -= (self.height - 64);
     } completion:^(BOOL finished) {
         if (self.editButton.isSelected) {//取消编辑状态
@@ -380,6 +373,7 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
         }
         self.hidden = YES;
         self.animating = NO;
+        self.showing = NO;
     }];
 }
 
@@ -387,10 +381,12 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     self.hidden = NO;
     self.animating = YES;
     [UIView animateWithDuration:.5f animations:^{
+        self.editButton.superview.alpha = 1;
         self.y += (self.height - 64);
     } completion:^(BOOL finished) {
         self.userInteractionEnabled = YES;
         self.animating = NO;
+        self.showing = YES;
         if (completion) {
             completion();
         }
@@ -507,11 +503,14 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
 @property (nonatomic, strong) UIScrollView *tabbarScrollView;
 @property (nonatomic, assign) CGFloat itemInterval;//多栏按钮间距
 
+@property (nonatomic, strong) UIView *topBackView;//我的栏目 背景
 @property (nonatomic, strong) UIButton *editButton;//编辑按钮
+@property (nonatomic, strong) UIButton *addButton;//加号按钮
 @property (nonatomic, strong) QFHomeEntityPopView *editView;//编辑页面
 
 @property (nonatomic, assign) NSInteger recoverCount;//超过多少个vc就进行回收 至少3个
 @property (nonatomic, strong) UIScrollView *contentScrollView;
+@property (nonatomic, assign, readwrite) CGFloat contentHeight;
 
 @end
 
@@ -531,17 +530,40 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
     self.automaticallyAdjustsScrollViewInsets = NO;
-    self.tabbarScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 64, SCREEN_WIDTH - 30, 30)];
+    
+    self.tabbarScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 64, SCREEN_WIDTH - 35, 30)];
     self.tabbarScrollView.backgroundColor = [UIColor whiteColor];
     self.tabbarScrollView.showsVerticalScrollIndicator = NO;
     self.tabbarScrollView.showsHorizontalScrollIndicator = NO;
     [self.view addSubview:self.tabbarScrollView];
     
-    self.editButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 30, 64, 30, 30)];
-    [self.editButton setTitle:@"-+-" forState:UIControlStateNormal];
-    [self.editButton addTarget:self action:@selector(beginEdit) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:self.editButton];
+    UIImageView *graduallyBackView = [[UIImageView alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 80, 64, 80, 30)];
+    graduallyBackView.backgroundColor = nil;
+    graduallyBackView.image = [UIImage imageNamed:@"backAlpha"];
+    [self.view addSubview:graduallyBackView];
+    
+    self.topBackView = [[UIView alloc] initWithFrame:CGRectMake(0, 64, SCREEN_WIDTH, 30)];
+    self.topBackView.backgroundColor = [UIColor whiteColor];
+    self.topBackView.alpha = 0;
+    [self.navigationController.view addSubview:self.topBackView];
+    
+    self.editButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 100, 5, 40, 20)];
+    [self.editButton addTarget:self action:@selector(editAction:) forControlEvents:UIControlEventTouchUpInside];
+    [self.editButton setTitle:@"编辑" forState:UIControlStateNormal];
+    [self.editButton setTitle:@"完成" forState:UIControlStateSelected];
+    [self.editButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
+    [self.editButton setTitleColor:[UIColor blueColor] forState:UIControlStateSelected];
+    self.editButton.layer.cornerRadius = 10;
+    self.editButton.layer.borderColor = [UIColor blueColor].CGColor;
+    self.editButton.layer.borderWidth = 0.5f;
+    [self.topBackView addSubview:self.editButton];
+    
+    self.addButton = [[UIButton alloc] initWithFrame:CGRectMake(SCREEN_WIDTH - 35, 64, 30, 30)];
+    [self.addButton setBackgroundImage:[UIImage imageNamed:@"addButton"] forState:UIControlStateNormal];
+    [self.addButton addTarget:self action:@selector(beginEdit) forControlEvents:UIControlEventTouchUpInside];
+    [self.navigationController.view addSubview:self.addButton];
     
     self.contentScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, self.tabbarScrollView.tail, SCREEN_WIDTH, self.view.height - self.tabbarScrollView.tail)];
     self.contentScrollView.backgroundColor = [UIColor whiteColor];
@@ -551,13 +573,16 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     self.contentScrollView.delegate = self;
     [self.view addSubview:self.contentScrollView];
     
+    self.contentHeight = self.contentScrollView.height;
+    
     self.editView = [[QFHomeEntityPopView alloc] initWithFrame:CGRectMake(0, 64-SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT)];
     __weak typeof(self) weakSelf = self;
     self.editView.selectAction = ^(QFHomeEntityModel *selectEntity) {
         [weakSelf endEditWithSelectEntity:selectEntity];
     };
     [self.editView.topButton addTarget:self action:@selector(endEdit) forControlEvents:UIControlEventTouchUpInside];
-    [self.editView.closeButton addTarget:self action:@selector(endEdit) forControlEvents:UIControlEventTouchUpInside];
+//    [self.editView.closeButton addTarget:self action:@selector(endEdit) forControlEvents:UIControlEventTouchUpInside];
+    self.editView.editButton = self.editButton;
     [self.navigationController.view insertSubview:self.editView belowSubview:self.navigationController.navigationBar];
     
     NSMutableArray *temp = [NSMutableArray array];
@@ -575,7 +600,7 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     self.allEntities = temp;
     
     NSMutableArray *temp1 = [NSMutableArray array];
-    NSArray *names1 = @[@"1",@"2",@"3",@"4",@"5",@"6",@"7",@"8"];
+    NSArray *names1 = @[@"1",@"2",@"3",@"4",@"5",@"6",@"7",@"8",@"1",@"2",@"3",@"4",@"5",@"6",@"7",@"8",@"1",@"2",@"3",@"4",@"5",@"6",@"7",@"8"];
     for (NSInteger i = 0; i < names1.count; i++) {
         QFHomeEntityModel *model = [QFHomeEntityModel new];
         model.name = names1[i];
@@ -592,8 +617,16 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
     NSLog(@"didReceiveMemoryWarning");
 }
 
+- (void)editAction:(UIButton *)sender {
+    [self.editView editAction:sender];
+}
+
 - (void)beginEdit {
     if (self.editView.animating) {
+        return;
+    }
+    if (self.editView.showing) {
+        [self endEdit];
         return;
     }
     NSInteger highLightIndex = 0;
@@ -604,12 +637,18 @@ typedef void(^QFHomeEntityPopViewSelectAction)(QFHomeEntityModel *selectEntity);
         }
     }
     [self.editView setHighLightIndex:highLightIndex];
+    [UIView animateWithDuration:0.25 animations:^{
+        self.addButton.transform = CGAffineTransformMakeRotation(M_PI_4);
+    }];
     [self.editView showWithCompletion:^{
-        [self.navigationController.view bringSubviewToFront:self.editView];
+        [self.navigationController.view insertSubview:self.editView aboveSubview:self.navigationController.navigationBar];
     }];
 }
 
 - (void)endEdit {
+    [UIView animateWithDuration:0.25 animations:^{
+        self.addButton.transform = CGAffineTransformIdentity;
+    }];
     [self endEditWithSelectEntity:nil];
 }
 

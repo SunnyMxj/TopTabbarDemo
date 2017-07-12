@@ -40,5 +40,7 @@ typedef NS_ENUM(NSInteger,QFHomeEntityModelType){
 
 @interface ViewController : UIViewController
 
+@property (nonatomic, assign, readonly) CGFloat contentHeight;
+
 @end
 
